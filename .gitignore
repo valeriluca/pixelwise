@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Secrets
+.env
+
+# Data and models
+data/
+models/*.pkl
+
+# Editor files
+.vscode/
+*.swp
