@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""
+# PixelWise persistence benchmark
+# Compares PostgreSQL and ScyllaDB under two workloads:
+#   W1: sequential single-writer, 10,000 rows + three read patterns
+#   W2: 8 concurrent writers, 1,250 rows each
+# Usage:
+#   python benchmark/benchmark_v2.py postgres --workload w1
+#   python benchmark/benchmark_v2.py scylla   --workload w2 --workers 8
 
-# Repository root must be on sys.path so 'from app.classifier ...' resolves
-# regardless of the working directory the script is invoked from.
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -31,15 +35,9 @@ W2_WORKERS  = 8        # default concurrent writers for W2
 _mnist_predictions_cache = None
 
 def get_realistic_predictions(n_needed):
-    """Return n_needed prediction dicts produced by running MNIST samples
-    through the v1 classifier. The first call loads MNIST and performs the
-    inference; subsequent calls return cached results.
-
-    The cache replaces homogeneous placeholder payloads ('5', 0.92) with
-    realistic value distributions across the row set, so that compression
-    behaviour, partition layout, and any value-sensitive driver overhead
-    reflect the live system rather than artefacts of constant input.
-    """
+    """Return n_needed prediction dicts from MNIST samples run through the
+    v1 classifier. First call loads MNIST and runs inference; subsequent
+    calls return cached results."""
     global _mnist_predictions_cache
     if n_needed > 70_000:
         raise ValueError(
@@ -60,10 +58,8 @@ def get_realistic_predictions(n_needed):
     return _mnist_predictions_cache[:n_needed]
 
 def make_rows(backend, n):
-    """Build a list of n row tuples for the given backend. The tuple shape
-    matches the parameterised INSERT statement of each driver: PostgreSQL
-    relies on a SERIAL primary key, ScyllaDB requires a client-generated
-    UUID as part of the composite key."""
+    """Build n row tuples for the given backend. PostgreSQL uses a SERIAL
+    primary key; ScyllaDB requires a client-generated UUID."""
     now = datetime.now(timezone.utc)
     preds = get_realistic_predictions(n)
     if backend == "postgres":
@@ -73,8 +69,7 @@ def make_rows(backend, n):
 
 # ── Statistics ───────────────────────────────────────────────────────────────
 def percentile(data, p):
-    """Linear-interpolated percentile of a numeric sample, matching the
-    'inclusive' definition used by most percentile reporting tools."""
+    """Linear-interpolated percentile of a numeric sample."""
     s = sorted(data)
     k = (len(s) - 1) * p / 100
     f = int(k)
@@ -84,8 +79,7 @@ def percentile(data, p):
     return s[f] + (s[c] - s[f]) * (k - f)
 
 def report(label, durations_s):
-    """Print and return summary statistics for a list of durations in
-    seconds. Output values are in milliseconds, rounded to two decimals."""
+    """Print and return mean/P50/P95/P99 in milliseconds."""
     ms = [d * 1000 for d in durations_s]
     stats = {
         "mean": round(statistics.mean(ms), 2),
@@ -100,8 +94,7 @@ def report(label, durations_s):
 
 # ── PostgreSQL driver ────────────────────────────────────────────────────────
 def pg_connect():
-    """Open a PostgreSQL connection from the DATABASE_URL environment
-    variable. The connection is reused across all iterations of one run."""
+    """Open a PostgreSQL connection from DATABASE_URL."""
     import psycopg2
     return psycopg2.connect(os.getenv("DATABASE_URL"))
 
@@ -112,7 +105,7 @@ def pg_truncate(conn):
     conn.commit()
 
 def pg_insert_batch(conn, rows):
-    """Batch-insert the row list via executemany. One commit per batch."""
+    """Batch-insert rows via executemany, one commit per batch."""
     with conn.cursor() as cur:
         cur.executemany(
             "INSERT INTO predictions "
@@ -155,8 +148,7 @@ def pg_read_r3(conn):
 
 # ── ScyllaDB driver ──────────────────────────────────────────────────────────
 def scylla_connect():
-    """Open a ScyllaDB session against the configured keyspace. Returns
-    both the cluster handle (for shutdown) and the session."""
+    """Open a ScyllaDB session. Returns cluster handle and session."""
     from cassandra.cluster import Cluster
     from cassandra.policies import DCAwareRoundRobinPolicy
     cluster = Cluster(
@@ -171,8 +163,8 @@ def scylla_truncate(session):
     session.execute("TRUNCATE predictions;")
 
 def scylla_insert_batch(session, rows, prepared):
-    """Insert rows sequentially via a prepared statement. Sequential rather
-    than async by design — see the module docstring."""
+    """Insert rows sequentially via prepared statement. Sequential by
+    design to match the synchronous PostgreSQL client pattern."""
     for row in rows:
         session.execute(prepared, row)
 
@@ -194,15 +186,13 @@ def scylla_read_r2(session):
         (os.getenv("MODEL_VERSION", "v1"), READ_LIMIT),
     ))
 
-# R3 has no ScyllaDB counterpart: CQL lacks OFFSET, and mid-range access
-# in a wide-column model requires token-based cursor paging, which is a
-# different query semantics rather than a slower implementation of the
-# same query.
+# R3 has no ScyllaDB equivalent: CQL has no OFFSET operator.
+# Mid-range access requires token-based cursor paging, a different
+# query model rather than a slower version of the same operation.
 
 # ── Workload W1: sequential single-writer ────────────────────────────────────
 def run_w1(backend, conn_or_session, prepared=None):
-    """Drive 23 iterations (3 warm-up + 20 timed) of the W1 workload:
-    truncate, insert N_ROWS rows, then run three read patterns."""
+    """Run 3 warm-up + 20 timed iterations: truncate, insert, read x3."""
     write_t, r1_t, r2_t, r3_t = [], [], [], []
 
     for run in range(N_WARMUP + N_RUNS):
@@ -254,23 +244,21 @@ def run_w1(backend, conn_or_session, prepared=None):
                 r3_t.append(r3)
 
     results = {
-        "write": report(f"W1 WRITE — {backend}", write_t),
-        "r1":    report(f"W1 R1 (newest 20) — {backend}", r1_t),
-        "r2":    report(f"W1 R2 (oldest 20) — {backend}", r2_t),
+        "write": report(f"W1 WRITE -- {backend}", write_t),
+        "r1":    report(f"W1 R1 (newest 20) -- {backend}", r1_t),
+        "r2":    report(f"W1 R2 (oldest 20) -- {backend}", r2_t),
     }
     if r3_t:
-        results["r3"] = report("W1 R3 (middle 20 via OFFSET) — postgres",
+        results["r3"] = report("W1 R3 (middle 20 via OFFSET) -- postgres",
                                r3_t)
     else:
         results["r3"] = "not_applicable"
-        print("\n  W1 R3 — ScyllaDB: not applicable (CQL has no OFFSET)")
+        print("\n  W1 R3 -- ScyllaDB: not applicable (CQL has no OFFSET)")
     return results
 
 # ── Workload W2: concurrent writers ──────────────────────────────────────────
 def _worker_pg(db_url, n_rows):
-    """W2 worker: open a fresh PostgreSQL connection, insert n_rows, close.
-    A separate connection per worker is required because a single
-    connection cannot serve concurrent statements."""
+    """W2 worker: fresh connection, insert n_rows, close."""
     import psycopg2
     conn = psycopg2.connect(db_url)
     rows = make_rows("postgres", n_rows)
@@ -280,9 +268,7 @@ def _worker_pg(db_url, n_rows):
     return time.perf_counter() - t0
 
 def _worker_scylla(host, keyspace, n_rows):
-    """W2 worker: open a fresh ScyllaDB session, insert n_rows, shut down.
-    The cassandra-driver session is technically thread-safe, but a per-worker
-    session matches the per-connection PostgreSQL setup."""
+    """W2 worker: fresh session, insert n_rows, shutdown."""
     from cassandra.cluster import Cluster
     from cassandra.policies import DCAwareRoundRobinPolicy
     cluster = Cluster(
@@ -302,19 +288,15 @@ def _worker_scylla(host, keyspace, n_rows):
     return time.perf_counter() - t0
 
 def run_w2(backend, n_workers):
-    """Drive 23 iterations of the W2 workload: spawn n_workers threads,
-    each inserting N_ROWS/n_workers rows, and time the wall-clock duration
-    until all workers complete."""
+    """Run 3 warm-up + 20 timed iterations of concurrent inserts."""
     rows_per_worker = N_ROWS // n_workers
     wall_t = []
 
-    # Preload the MNIST cache so the first warm-up iteration is not
-    # inflated by the one-time inference cost.
     get_realistic_predictions(rows_per_worker)
 
     for run in range(N_WARMUP + N_RUNS):
         label = "WARMUP" if run < N_WARMUP else f"RUN {run-N_WARMUP+1:02d}"
-        print(f"  {label} {n_workers}×{rows_per_worker} rows",
+        print(f"  {label} {n_workers}x{rows_per_worker} rows",
               end=" ", flush=True)
 
         t0 = time.perf_counter()
@@ -339,10 +321,11 @@ def run_w2(backend, n_workers):
             wall_t.append(wall)
 
     return {"concurrent_write": report(
-        f"W2 CONCURRENT WRITE — {backend} ({n_workers} workers)", wall_t)}
+        f"W2 CONCURRENT WRITE -- {backend} ({n_workers} workers)", wall_t)}
 
 # ── Main entry point ─────────────────────────────────────────────────────────
 def main():
+    """Parse arguments, warm the MNIST cache, run the selected workload."""
     parser = argparse.ArgumentParser(
         description="Compare PostgreSQL and ScyllaDB on the PixelWise "
                     "persistence layer.")
@@ -357,7 +340,6 @@ def main():
     print(f"  backend={args.backend}  workload={args.workload}")
     print(f"{'='*50}\n")
 
-    # Warm the MNIST cache before any timing starts.
     get_realistic_predictions(N_ROWS)
 
     results = {}
@@ -389,7 +371,7 @@ def main():
     out = f"results_{args.backend}_{args.workload}.json"
     with open(out, "w") as f:
         json.dump(results, f, indent=2)
-    print(f"\n  → {out}\n")
+    print(f"\n  -> {out}\n")
 
 if __name__ == "__main__":
     main()
