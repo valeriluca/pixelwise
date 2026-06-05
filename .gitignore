@@ -13,3 +13,5 @@ models/*.pkl
 # Editor files
 .vscode/
 *.swp
+results/
+scikit_learn_data/
