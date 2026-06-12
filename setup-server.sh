@@ -9,11 +9,14 @@ sudo systemctl start postgresql@16-main
 sudo systemctl enable postgresql@16-main
 
 # --- ScyllaDB ---
+# --- ScyllaDB ---
 sudo mkdir -p /etc/apt/keyrings
-sudo curl -o /etc/apt/keyrings/scylladb.gpg \
-  https://downloads.scylladb.com/deb/debian/scylladb-2026.1/scylladb.gpg
+sudo gpg --homedir /tmp --no-default-keyring \
+  --keyring /etc/apt/keyrings/scylladb.gpg \
+  --keyserver hkp://keyserver.ubuntu.com \
+  --recv-keys C503C686B007F39E
 echo "deb [signed-by=/etc/apt/keyrings/scylladb.gpg] \
-  https://downloads.scylladb.com/deb/debian scylladb-2026.1 main" \
+  https://downloads.scylladb.com/downloads/scylla/deb/debian-ubuntu/scylladb-2026.1 stable main" \
   | sudo tee /etc/apt/sources.list.d/scylladb.list
 sudo apt update
 sudo apt install -y scylla
