@@ -1,16 +1,21 @@
 #!/bin/bash
 set -euo pipefail
 
+# --- System packages ---
 sudo apt update
-sudo apt install -y git python3 python3-pip python3-venv curl postgresql nginx-common nginx
+sudo apt install -y git python3 python3-pip python3-venv curl \
+  postgresql nginx-common nginx
+
+# --- PostgreSQL cluster ---
 sudo pg_dropcluster --stop 16 main 2>/dev/null || true
 sudo pg_createcluster 16 main
 sudo systemctl start postgresql@16-main
 sudo systemctl enable postgresql@16-main
 
 # --- ScyllaDB ---
-# --- ScyllaDB ---
 sudo mkdir -p /etc/apt/keyrings
+sudo rm -f /etc/apt/sources.list.d/scylladb.list \
+           /etc/apt/sources.list.d/scylla.list
 sudo gpg --homedir /tmp --no-default-keyring \
   --keyring /etc/apt/keyrings/scylladb.gpg \
   --keyserver hkp://keyserver.ubuntu.com \
@@ -21,16 +26,17 @@ echo "deb [signed-by=/etc/apt/keyrings/scylladb.gpg] \
 sudo apt update
 sudo apt install -y scylla
 sudo scylla_dev_mode_setup --developer-mode 1
-grep -q "^auto_snapshot" /etc/scylla/scylla.yaml && \
-  sudo sed -i 's/^auto_snapshot.*/auto_snapshot: false/' \
-    /etc/scylla/scylla.yaml || \
+if grep -q "^auto_snapshot" /etc/scylla/scylla.yaml 2>/dev/null; then
+  sudo sed -i 's/^auto_snapshot.*/auto_snapshot: false/' /etc/scylla/scylla.yaml
+else
   echo "auto_snapshot: false" | sudo tee -a /etc/scylla/scylla.yaml
+fi
 sudo systemctl enable scylla-server
 sudo systemctl start scylla-server
 echo "Waiting for ScyllaDB..."
 until cqlsh -e "DESCRIBE keyspaces" > /dev/null 2>&1; do sleep 2; done
 echo "ScyllaDB ready."
-cqlsh -e "
+cqlsh << 'CQLEOF'
 CREATE KEYSPACE IF NOT EXISTS pixelwise
   WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
 USE pixelwise;
@@ -42,7 +48,7 @@ CREATE TABLE IF NOT EXISTS predictions (
   confidence    DOUBLE,
   PRIMARY KEY ((model_version), created_at, id)
 ) WITH CLUSTERING ORDER BY (created_at DESC);
-"
+CQLEOF
 
 # --- Python venv ---
 python3 -m venv .venv
