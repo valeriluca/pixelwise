@@ -1,5 +1,4 @@
-const API_KEY = "LUCAISCOOOOOL
-";
+const API_KEY = "REPLACE_ME";
 const N = 28;
 const SCALE = 10;
 
@@ -48,4 +47,41 @@ function getPixels() {
 }
 
 async function classify() {
-    const r = await fetch("/api/classify", {
+    const res = await fetch("/api/classify", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-API-Key": API_KEY
+        },
+        body: JSON.stringify({ pixels: getPixels() })
+    });
+    if (!res.ok) {
+        document.getElementById("result").textContent = "Error: " + res.status;
+        return;
+    }
+    const data = await res.json();
+    document.getElementById("result").textContent =
+        "Prediction: " + data.prediction + " (" + (data.confidence * 100).toFixed(1) + "%)";
+    loadHistory();
+}
+
+async function loadHistory() {
+    const res = await fetch("/api/results");
+    if (!res.ok) return;
+    const data = await res.json();
+    const ul = document.getElementById("history");
+    ul.innerHTML = "";
+    for (const r of data.results) {
+        const li = document.createElement("li");
+        li.textContent = r.prediction + " - " + new Date(r.created_at).toLocaleTimeString();
+        ul.appendChild(li);
+    }
+}
+
+document.getElementById("classify").onclick = classify;
+document.getElementById("clear").onclick = () => {
+    clearPad();
+    document.getElementById("result").textContent = "";
+};
+
+loadHistory();

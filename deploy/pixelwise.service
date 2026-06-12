@@ -4,9 +4,9 @@ After=network.target
 
 [Service]
 User=produser
-WorkingDirectory=/opt/pixelwise
-EnvironmentFile=/opt/pixelwise/.env
-ExecStart=/opt/pixelwise/.venv/bin/uvicorn \
+WorkingDirectory=/home/produser/pixelwise
+EnvironmentFile=/home/produser/pixelwise/.env
+ExecStart=/home/produser/pixelwise/.venv/bin/uvicorn \
     app.main:app --host 0.0.0.0 --port 8000
 Restart=always
 RestartSec=3
