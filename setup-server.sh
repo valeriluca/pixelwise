@@ -2,8 +2,7 @@
 set -euo pipefail
 
 sudo apt update
-sudo mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled /etc/nginx/conf.d
-sudo apt install -y git python3 python3-pip python3-venv curl postgresql nginx
+sudo apt install -y git python3 python3-pip python3-venv curl postgresql nginx-common nginx
 
 # --- Python venv ---
 python3 -m venv .venv
