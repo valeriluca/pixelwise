@@ -1,6 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
+# --- Load .env early ---
+if [ -f .env ]; then
+    set -a; source .env; set +a
+fi
+
 # --- System packages ---
 sudo apt update
 sudo apt install -y git python3 python3-pip python3-venv curl \
@@ -56,9 +61,6 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 # --- PostgreSQL: user + database ---
-if [ -f .env ]; then
-    set -a; source .env; set +a
-fi
 DB_PW="${DB_PASSWORD:-secret}"
 sudo -u postgres psql -tAc \
   "SELECT 1 FROM pg_roles WHERE rolname='pixelwise'" \
