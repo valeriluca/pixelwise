@@ -3,8 +3,8 @@ set -euo pipefail
 
 sudo apt update
 sudo apt install -y git python3 python3-pip python3-venv curl postgresql nginx-common nginx
-sudo systemctl start postgresql
-sudo systemctl enable postgresql
+sudo systemctl start postgresql@16-main
+sudo systemctl enable postgresql@16-main
 
 # --- Python venv ---
 python3 -m venv .venv
