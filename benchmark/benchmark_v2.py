@@ -154,8 +154,10 @@ def scylla_connect():
     cluster = Cluster(
         [os.getenv("SCYLLA_HOST", "127.0.0.1")],
         load_balancing_policy=DCAwareRoundRobinPolicy(local_dc="datacenter1"),
+        connect_timeout=30,
     )
     session = cluster.connect(os.getenv("SCYLLA_KEYSPACE", "pixelwise"))
+    session.default_timeout = 180
     return cluster, session
 
 def scylla_truncate(session):
@@ -274,6 +276,7 @@ def _worker_scylla(host, keyspace, n_rows):
     cluster = Cluster(
         [host],
         load_balancing_policy=DCAwareRoundRobinPolicy(local_dc="datacenter1"),
+        connect_timeout=30,
     )
     session = cluster.connect(keyspace)
     prepared = session.prepare(
