@@ -3,6 +3,8 @@ set -euo pipefail
 
 sudo apt update
 sudo apt install -y git python3 python3-pip python3-venv curl postgresql nginx-common nginx
+sudo pg_dropcluster --stop 16 main 2>/dev/null || true
+sudo pg_createcluster 16 main
 sudo systemctl start postgresql@16-main
 sudo systemctl enable postgresql@16-main
 
