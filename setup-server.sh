@@ -2,9 +2,8 @@
 set -euo pipefail
 
 sudo apt update
-sudo apt install -y git python3 python3-pip python3-venv curl \
-  postgresql nginx
-
+sudo apt install -y git python3 python3-pip python3-venv curl postgresql
+sudo apt install -y --reinstall nginx || sudo apt install -y nginx
 # --- Python venv ---
 python3 -m venv .venv
 source .venv/bin/activate
