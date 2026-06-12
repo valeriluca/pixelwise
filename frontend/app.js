@@ -1,5 +1,4 @@
-const API_KEY = "LUCAISCOOOOOL
-";
+const API_KEY = "REPLACE_ME";
 const N = 28;
 const SCALE = 10;
 
