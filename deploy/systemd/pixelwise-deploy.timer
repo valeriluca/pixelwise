@@ -1,0 +1,10 @@
+[Unit]
+Description=Run PixelWise auto-deploy
+
+[Timer]
+OnBootSec=15s
+OnUnitActiveSec=30s
+Unit=pixelwise-deploy.service
+
+[Install]
+WantedBy=timers.target
