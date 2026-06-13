@@ -13,15 +13,13 @@ Handwritten digit classification web application built across the Full Stack Han
 git clone -b scylla https://github.com/valeriluca/pixelwise.git
 cd pixelwise
 cp .env.example .env
-nano .env   # set SECRET_API_KEY and DB_PASSWORD
+nano .env   # set SECRET_API_KEY
 bash setup-server.sh
 ```
 
 The setup script installs PostgreSQL, ScyllaDB (developer mode), nginx, creates all databases and tables, pulls the model artefact, deploys the frontend, and starts the service via systemd.
 
 After setup:
-- Frontend: http://<VM-IP>/
-- API health: http://<VM-IP>/api/health
 - Benchmark: `source .venv/bin/activate && python benchmark/benchmark_v2.py scylla --workload both`
 
 ## Seminar Paper
