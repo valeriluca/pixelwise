@@ -20,7 +20,13 @@ bash setup-server.sh
 The setup script installs PostgreSQL, ScyllaDB (developer mode), nginx, creates all databases and tables, pulls the model artefact, deploys the frontend, and starts the service via systemd.
 
 After setup:
-- Benchmark: `source .venv/bin/activate && python benchmark/benchmark_v2.py scylla --workload both`
+- Benchmark: 
+-     source .venv/bin/activate 
+-     sudo systemctl stop postgresql@16-main
+-     python benchmark/benchmark_v2.py scylla --workload both
+-     sudo systemctl start postgresql@16-main
+-     sudo systemctl stop scylla-server
+-     python benchmark/benchmark_v2.py postgres --workload both
 
 ## Seminar Paper
 
