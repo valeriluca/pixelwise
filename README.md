@@ -1,27 +1,24 @@
-# PixelWise — ScyllaDB Branch
+# PixelWise
 
-This branch ports the PixelWise persistence layer from PostgreSQL 
-to ScyllaDB. See the seminar paper for architectural rationale and 
-benchmark results.
+Handwritten digit classification web application built across the Full Stack Handwerk lecture.
 
-## Setup (Ubuntu 24.04, 2 GB RAM, 2 vCPU)
+## Branches
+
+- `main` — PostgreSQL persistence, nginx reverse proxy, interactive frontend
+- `scylla` — ScyllaDB port for the seminar paper (PostgreSQL + ScyllaDB)
+
+## Setup (fresh Ubuntu 24.04 VM, 2 GB RAM, 2 vCPU)
 
 ```bash
-git clone -b scylla https://github.com/valeriluca/pixelwise.git
+git clone https://github.com/valeriluca/pixelwise.git
 cd pixelwise
 cp .env.example .env
+nano .env   # set SECRET_API_KEY and DB_PASSWORD
 bash setup-server.sh
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-The setup script installs ScyllaDB in developer mode, creates the 
-`pixelwise` keyspace and `predictions` table, and pulls the model 
-artefact automatically.
+The setup script installs PostgreSQL, nginx, creates the database and table, pulls the model artefact, deploys the frontend, and starts the service via systemd.
 
-## Branch overview
-
-- `main` — PostgreSQL-backed PixelWise (course baseline, Block 6)
-- `scylla` — ScyllaDB port (seminar paper artefact)
+After setup:
+- Frontend: http://<VM-IP>/
+- API health: http://<VM-IP>/api/health
