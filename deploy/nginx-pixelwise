@@ -1,6 +1,6 @@
 server {
     listen 80;
-    server_name 192.168.56.11;
+    server_name _;
     location / {
         root /var/www/pixelwise;
         index index.html;
