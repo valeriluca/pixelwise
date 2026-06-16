@@ -19,7 +19,10 @@ bash setup-server.sh
 
 The setup script installs PostgreSQL, nginx, creates the database and table, pulls the model artefact, deploys the frontend, and starts the service via systemd.
 
-After setup:
-- Frontend: http://<VM-IP>/ (from host browser) or http://localhost/ (from VM)
-- API health: http://<VM-IP>/api/health
-- Recent predictions: http://<VM-IP>/api/results
+## Access
+
+After setup, find the VM's IP with `ip a`. Then open:
+
+- Frontend: `http://<VM-IP>`
+- API health: `http://<VM-IP>/api/health`
+- Recent predictions: `http://<VM-IP>/api/results`
