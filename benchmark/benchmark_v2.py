@@ -176,7 +176,7 @@ def scylla_read_r1(session):
         "SELECT id, prediction, confidence, created_at "
         "FROM predictions WHERE model_version = %s "
         "ORDER BY created_at DESC LIMIT %s",
-        (os.getenv("MODEL_VERSION", "v1"), READ_LIMIT),
+        ("v1", READ_LIMIT),
     ))
 
 def scylla_read_r2(session):
@@ -185,7 +185,7 @@ def scylla_read_r2(session):
         "SELECT id, prediction, confidence, created_at "
         "FROM predictions WHERE model_version = %s "
         "ORDER BY created_at ASC LIMIT %s",
-        (os.getenv("MODEL_VERSION", "v1"), READ_LIMIT),
+        ("v1", READ_LIMIT),
     ))
 
 # R3 has no ScyllaDB equivalent: CQL has no OFFSET operator.
