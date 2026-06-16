@@ -55,11 +55,26 @@ if [ -f .env ]; then
 fi
 sudo nginx -t && sudo systemctl restart nginx
 
-# --- systemd service ---
-if [ -f deploy/pixelwise.service ]; then
-    sudo cp deploy/pixelwise.service /etc/systemd/system/pixelwise.service
-    sudo systemctl daemon-reload
-    sudo systemctl enable pixelwise
-    sudo systemctl restart pixelwise
-    sudo systemctl status pixelwise --no-pager
-fi
+# --- systemd service (generated for current user and path) ---
+APP_DIR="$(pwd)"
+APP_USER="$(whoami)"
+sudo tee /etc/systemd/system/pixelwise.service > /dev/null <<EOF
+[Unit]
+Description=PixelWise API
+After=network.target
+
+[Service]
+User=${APP_USER}
+WorkingDirectory=${APP_DIR}
+EnvironmentFile=${APP_DIR}/.env
+ExecStart=${APP_DIR}/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl daemon-reload
+sudo systemctl enable pixelwise
+sudo systemctl restart pixelwise
+sudo systemctl status pixelwise --no-pager
